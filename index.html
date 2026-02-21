@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tango Pro Live</title>
+    <script src="https://download.agora.io/sdk/release/AgoraRTC_N.js"></script>
+    <script src="https://www.paypal.com/sdk/js?client-id=ATfsClCXiMMz7YyApME13i3yJkQK4UPDTL3PwPNh10Et5d17z9cpk-6_q0MqvCrVya9T5kwcc-OCY&currency=USD"></script>
+
+    <style>
+        :root { --primary: #ff007f; --dark: #0a0a0a; --card: #161616; --gold: #ffd700; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: var(--dark); color: white; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+        /* Sections Toggle */
+        .page-section { display: none; flex: 1; overflow-y: auto; padding-bottom: 80px; }
+        .active-section { display: block; }
+
+        /* Top Bar */
+        header { display: flex; justify-content: space-between; padding: 15px; align-items: center; background: var(--card); border-bottom: 1px solid #222; }
+        .coins { color: var(--gold); font-weight: bold; font-size: 14px; background: #222; padding: 5px 12px; border-radius: 20px; }
+
+        /* Section 1: All Users Grid */
+        .user-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 10px; }
+        .user-box { background: var(--card); height: 200px; border-radius: 15px; position: relative; overflow: hidden; border: 1px solid #222; }
+        .user-box img { width: 100%; height: 100%; object-fit: cover; }
+        .live-tag { position: absolute; top: 8px; left: 8px; background: red; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+
+        /* Center Live Button */
+        .center-live-container { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); z-index: 100; }
+        .btn-go-live { background: var(--primary); width: 65px; height: 65px; border-radius: 50%; border: 4px solid #0a0a0a; display: flex; align-items: center; justify-content: center; font-size: 28px; cursor: pointer; box-shadow: 0 0 15px var(--primary); color: white; }
+
+        /* Bottom Nav (3 Sections Only) */
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; display: flex; background: var(--card); border-top: 1px solid #222; padding: 15px 0; z-index: 1000; }
+        .nav-tab { flex: 1; text-align: center; color: #777; font-size: 12px; cursor: pointer; }
+        .nav-tab.active { color: var(--primary); }
+        .nav-tab i { font-size: 20px; display: block; margin-bottom: 3px; }
+
+        /* Section 3: Profile */
+        .profile-header { text-align: center; padding: 30px 20px; background: var(--card); border-radius: 0 0 30px 30px; margin-bottom: 10px; }
+        .profile-img { width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--primary); object-fit: cover; }
+        .menu-list { padding: 10px 20px; }
+        .menu-item { background: var(--card); padding: 15px; margin-bottom: 8px; border-radius: 12px; display: flex; justify-content: space-between; cursor: pointer; }
+        .menu-item span { color: #aaa; }
+
+        /* Live View Overlay */
+        #live-view { display: none; position: fixed; inset: 0; background: #000; z-index: 5000; }
+        #local-player { width: 100%; height: 100%; }
+        .stop-live { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); background: #ff3b30; color: white; border: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; }
+
+        /* Modal Settings */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 6000; align-items: center; justify-content: center; padding: 20px; }
+        .modal-box { background: var(--card); width: 100%; max-width: 400px; border-radius: 20px; padding: 25px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h2 style="font-size: 18px; color: var(--primary);">TANGO LIVE</h2>
+        <div class="coins"> <span id="coin-balance">0</span></div>
+    </header>
+
+    <section id="all-users" class="page-section active-section">
+        <div class="user-grid" id="grid-container">
+            <div class="user-box"><span class="live-badge">LIVE</span><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400"></div>
+            <div class="user-box"><img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"></div>
+            <div class="user-box"><img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400"></div>
+            <div class="user-box"><img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400"></div>
+        </div>
+        <div class="center-live-container">
+            <button class="btn-go-live" onclick="toggleStream()"></button>
+        </div>
+    </section>
+
+    <section id="private-call" class="page-section">
+        <div style="padding: 50px 20px; text-align: center;">
+            <h3>Private Call Requests</h3>
+            <p style="color: #666; margin-top: 10px;">        .</p>
+        </div>
+    </section>
+
+    <section id="profile" class="page-section">
+        <div class="profile-header">
+            <img id="profile-pic" src="https://via.placeholder.com/150" class="profile-img">
+            <h3 id="user-name" style="margin-top: 10px;">Guest User</h3>
+            <p onclick="document.getElementById('file-input').click()" style="color: var(--primary); font-size: 13px; cursor: pointer;">Edit Photo</p>
+            <input type="file" id="file-input" hidden onchange="uploadImage(event)">
+        </div>
+        <div class="menu-list">
+            <div class="menu-item" onclick="openModal('pay-modal')"> Buy Coins <span>></span></div>
+            <div class="menu-item"> Withdraw Earnings <span>></span></div>
+            <div class="menu-item"> Account Details <span>></span></div>
+            <div class="menu-item"> Notifications <span>></span></div>
+            <div class="menu-item"> Terms & Privacy <span>></span></div>
+            <div class="menu-item" style="color: #ff3b30;" onclick="logout()"> Logout</div>
+        </div>
+    </section>
+
+    <footer class="bottom-nav">
+        <div class="nav-tab active" onclick="switchSection('all-users', this)"><br>Explore</div>
+        <div class="nav-tab" onclick="switchSection('private-call', this)"><br>Private</div>
+        <div class="nav-tab" onclick="switchSection('profile', this)"><br>Profile</div>
+    </footer>
+
+    <div id="live-view">
+        <div id="local-player"></div>
+        <button class="stop-live" onclick="toggleStream()">Stop Streaming</button>
+    </div>
+
+    <div id="pay-modal" class="modal">
+        <div class="modal-box">
+            <h3 style="margin-bottom: 15px;">Buy Coins</h3>
+            <p>1000 Coins = $10.00</p>
+            <div id="paypal-btn" style="margin: 15px 0;"></div>
+            <button onclick="closeModal('pay-modal')" style="width: 100%; padding: 10px; background: #333; border: none; color: white; border-radius: 10px;">Cancel</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBwDUe5E8qRY1dbZzUQJu9eCAKBS7YSHVU",
+            authDomain: "live-e6771.firebaseapp.com",
+            projectId: "live-e6771",
+            storageBucket: "live-e6771.firebasestorage.app",
+            messagingSenderId: "570901004231",
+            appId: "1:570901004231:web:220679cf41cf55b98023e2"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        let currentUser = null;
+        const AGORA_APP_ID = "8c1dec62ad5342199e2552883a4b583f";
+        let rtc = { client: null, video: null, audio: null };
+
+        // 1. Auth Listener
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                loadData();
+            } else {
+                console.log("No user");
+            }
+        });
+
+        async function loadData() {
+            const snap = await getDoc(doc(db, "users", currentUser.uid));
+            if (snap.exists()) {
+                const d = snap.data();
+                document.getElementById('coin-balance').innerText = d.coins || 0;
+                document.getElementById('user-name').innerText = d.name || "Tango Star";
+                if(d.pic) document.getElementById('profile-pic').src = d.pic;
+            } else {
+                await setDoc(doc(db, "users", currentUser.uid), { name: "New User", coins: 500 });
+            }
+        }
+
+        // 2. Section Switching
+        window.switchSection = (id, el) => {
+            document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active-section'));
+            document.getElementById(id).classList.add('active-section');
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+        };
+
+        // 3. Live Streaming
+        let isLive = false;
+        window.toggleStream = async () => {
+            if (!isLive) {
+                try {
+                    rtc.client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+                    await rtc.client.join(AGORA_APP_ID, "main", null, null);
+                    rtc.audio = await AgoraRTC.createMicrophoneAudioTrack();
+                    rtc.video = await AgoraRTC.createCameraVideoTrack();
+                    document.getElementById('live-view').style.display = 'block';
+                    rtc.video.play("local-player");
+                    await rtc.client.publish([rtc.audio, rtc.video]);
+                    isLive = true;
+                } catch (e) { alert("Camera Permission Required!"); }
+            } else {
+                rtc.video.stop(); rtc.video.close(); rtc.audio.close();
+                await rtc.client.leave();
+                document.getElementById('live-view').style.display = 'none';
+                isLive = false;
+            }
+        };
+
+        // 4. Image Upload
+        window.uploadImage = async (e) => {
+            const file = e.target.files[0];
+            const sRef = ref(storage, `users/${currentUser.uid}`);
+            await uploadBytes(sRef, file);
+            const url = await getDownloadURL(sRef);
+            await updateDoc(doc(db, "users", currentUser.uid), { pic: url });
+            loadData();
+        };
+
+        // 5. PayPal
+        paypal.Buttons({
+            createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { value: '10.00' } }] }),
+            onApprove: (d, a) => a.order.capture().then(async res => {
+                const ref = doc(db, "users", currentUser.uid);
+                const snap = await getDoc(ref);
+                await updateDoc(ref, { coins: (snap.data().coins || 0) + 1000 });
+                loadData(); alert("1000 Coins Added!");
+            })
+        }).render('#paypal-btn');
+
+        window.openModal = (id) => document.getElementById(id).style.display = 'flex';
+        window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+        window.logout = () => auth.signOut().then(() => location.reload());
+
+    </script>
+</body>
+</html>
