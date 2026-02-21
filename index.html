@@ -3,112 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tango Pro Live</title>
+    <title>Tango Pro - Full Live Production</title>
+    
     <script src="https://download.agora.io/sdk/release/AgoraRTC_N.js"></script>
+    
     <script src="https://www.paypal.com/sdk/js?client-id=ATfsClCXiMMz7YyApME13i3yJkQK4UPDTL3PwPNh10Et5d17z9cpk-6_q0MqvCrVya9T5kwcc-OCY&currency=USD"></script>
 
     <style>
         :root { --primary: #ff007f; --dark: #0a0a0a; --card: #161616; --gold: #ffd700; }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background: var(--dark); color: white; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-
-        /* Page Navigation */
+        
         .page-section { display: none; flex: 1; overflow-y: auto; padding-bottom: 90px; }
         .active-section { display: block; }
 
-        /* Top Bar */
-        header { display: flex; justify-content: space-between; padding: 15px; background: var(--card); border-bottom: 1px solid #222; }
-        .coins { color: var(--gold); font-weight: bold; background: #222; padding: 5px 12px; border-radius: 20px; font-size: 14px; }
+        /* General UI */
+        header { padding: 15px; background: var(--card); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; }
+        .coin-badge { background: #222; padding: 5px 15px; border-radius: 20px; color: var(--gold); font-weight: bold; }
+        
+        /* Grid & Cards */
+        .grid-container { padding: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .user-card { background: #222; height: 220px; border-radius: 15px; position: relative; overflow: hidden; border: 1px solid #333; }
+        .live-tag { position: absolute; top: 10px; left: 10px; background: red; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; }
+        
+        /* Central Live Button */
+        .btn-go-live { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: var(--primary); width: 65px; height: 65px; border-radius: 50%; border: 4px solid var(--dark); color: white; font-size: 28px; box-shadow: 0 0 15px var(--primary); cursor: pointer; z-index: 100; }
 
-        /* Explore/Home Grid */
-        .user-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 10px; }
-        .user-box { background: var(--card); height: 200px; border-radius: 15px; position: relative; overflow: hidden; border: 1px solid #222; }
-        .user-box img { width: 100%; height: 100%; object-fit: cover; }
+        /* Wallet & Call UI */
+        .balance-card { background: linear-gradient(45deg, #1a1a1a, #333); padding: 30px; border-radius: 20px; text-align: center; margin: 20px; border: 1px solid var(--gold); }
+        .payment-box { background: var(--card); padding: 20px; border-radius: 15px; margin: 20px; border: 1px solid #333; }
+        .oxpay-btn { background: #0052cc; color: white; border: none; padding: 15px; width: 100%; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .call-item { background: var(--card); padding: 15px; margin: 10px 20px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; }
 
-        /* Floating Live Button */
-        .live-btn-container { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); z-index: 99; }
-        .go-live-btn { background: var(--primary); width: 60px; height: 60px; border-radius: 50%; border: 4px solid #0a0a0a; font-size: 25px; color: white; cursor: pointer; box-shadow: 0 0 15px var(--primary); }
+        /* Live Stream Overlay */
+        #live-container { display: none; position: fixed; inset: 0; background: #000; z-index: 5000; }
+        #local-video { width: 100%; height: 100%; object-fit: cover; }
+        .live-controls { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: space-around; padding: 0 20px; }
+        .action-btn { background: rgba(255,255,255,0.2); border: none; width: 55px; height: 55px; border-radius: 50%; color: white; font-size: 24px; cursor: pointer; backdrop-filter: blur(10px); }
 
-        /* 1:1 Private Call Section */
-        .call-card { background: var(--card); margin: 10px; padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; }
-        .btn-call { background: #28a745; color: white; border: none; padding: 8px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+        /* Gift Menu */
+        #gift-menu { display: none; position: fixed; bottom: 0; width: 100%; background: rgba(10,10,10,0.98); padding: 25px; border-radius: 25px 25px 0 0; z-index: 6000; border-top: 2px solid var(--primary); }
+        .gift-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        .gift-box { text-align: center; background: #222; padding: 15px 10px; border-radius: 12px; cursor: pointer; border: 1px solid #333; transition: 0.2s; }
+        .gift-box:active { transform: scale(0.95); background: #333; }
 
-        /* Profile Section */
-        .profile-head { text-align: center; padding: 30px; background: #111; border-bottom: 1px solid #222; }
-        .profile-img { width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--primary); }
-        .menu-item { background: var(--card); padding: 15px; margin: 5px 15px; border-radius: 12px; display: flex; justify-content: space-between; cursor: pointer; }
-
-        /* Bottom Tab Bar */
-        .bottom-nav { position: fixed; bottom: 0; width: 100%; display: flex; background: var(--card); border-top: 1px solid #222; padding: 12px 0; z-index: 1000; }
-        .nav-tab { flex: 1; text-align: center; color: #666; font-size: 12px; cursor: pointer; }
-        .nav-tab.active { color: var(--primary); }
-
-        /* Full Screen Live View */
-        #live-screen { display: none; position: fixed; inset: 0; background: #000; z-index: 5000; }
-        #video-container { width: 100%; height: 100%; background: #222; }
-        .end-btn { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); background: #ff3b30; color: white; border: none; padding: 12px 35px; border-radius: 30px; font-weight: bold; }
+        /* Bottom Nav */
+        footer { position: fixed; bottom: 0; width: 100%; display: flex; background: var(--card); padding: 15px 0; border-top: 1px solid #222; z-index: 1000; }
+        .nav-link { flex: 1; text-align: center; color: #666; font-size: 12px; cursor: pointer; }
+        .nav-link.active { color: var(--primary); font-weight: bold; }
     </style>
 </head>
 <body>
 
     <header>
-        <h3 style="color: var(--primary);">TANGO</h3>
-        <div class="coins">🪙 <span id="coin-balance">0</span></div>
+        <h2 style="color: var(--primary); letter-spacing: 1px;">TANGO LIVE</h2>
+        <div class="coin-badge">🪙 <span id="top-coins">0</span></div>
     </header>
 
     <section id="explore" class="page-section active-section">
-        <div class="user-grid">
-            <div class="user-box"><img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400"></div>
-            <div class="user-box"><img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400"></div>
+        <div class="grid-container">
+            <div class="user-card">
+                <span class="live-tag">LIVE</span>
+                <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400" style="width:100%; height:100%; object-fit:cover; opacity:0.7;">
+            </div>
+            <div class="user-card"><img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400" style="width:100%; height:100%; object-fit:cover; opacity:0.7;"></div>
         </div>
-        <div class="live-btn-container">
-            <button class="go-live-btn" onclick="startBroadcasting()">🎥</button>
-        </div>
+        <button class="btn-go-live" onclick="goLiveNow()">🎥</button>
     </section>
 
     <section id="private" class="page-section">
-        <div style="padding: 15px;">
-            <h3 style="margin-bottom: 15px;">Private Call Requests</h3>
-            <div class="call-card">
-                <div>
-                    <strong>User Name</strong><br>
-                    <small style="color: #888;">$10.00 per minute</small>
-                </div>
-                <button class="btn-call" onclick="alert('Starting 1:1 Private Call...')">📞 Call Now</button>
-            </div>
+        <h3 style="padding: 20px 20px 5px;">Private Call Requests</h3>
+        <p style="padding: 0 20px; color: #888; font-size: 13px;">100 Coins per minute</p>
+        
+        <div class="call-item">
+            <div><strong>Hot Star</strong><br><small style="color: var(--gold);">Online</small></div>
+            <button style="background: #28a745; color: white; border: none; padding: 8px 20px; border-radius: 20px; font-weight: bold; cursor: pointer;" onclick="alert('Calling...')">📞 Call</button>
         </div>
     </section>
 
-    <section id="profile" class="page-section">
-        <div class="profile-head">
-            <img id="user-pic" src="https://via.placeholder.com/150" class="profile-img">
-            <h3 id="display-name" style="margin-top: 10px;">Guest</h3>
+    <section id="wallet" class="page-section">
+        <div class="balance-card">
+            <p style="color: #aaa; font-size: 14px;">My Wallet Balance</p>
+            <h1 style="color: var(--gold); font-size: 45px; margin: 10px 0;">🪙 <span id="main-balance">0</span></h1>
         </div>
-        <div class="menu-list" style="margin-top: 10px;">
-            <div class="menu-item" onclick="alert('Wallet Opening...')">💰 My Wallet <span>></span></div>
-            <div class="menu-item" onclick="alert('Coins Menu...')">🪙 Buy Coins <span>></span></div>
-            <div class="menu-item" onclick="alert('Settings...')">⚙️ Settings <span>></span></div>
-            <div class="menu-item" style="color: #ff3b30;" onclick="location.reload()">🚪 Logout</div>
+
+        <div class="payment-box">
+            <h4 style="margin-bottom: 20px;">Top Up Coins (1000 Coins = $10)</h4>
+            
+            <div id="paypal-button-container"></div>
+
+            <div style="text-align: center; margin: 20px 0; color: #555; font-size: 12px;">OR</div>
+
+            <button class="oxpay-btn" onclick="payWithOxPay()">Pay with OxPay Gateway</button>
         </div>
     </section>
 
-    <footer class="bottom-nav">
-        <div class="nav-tab active" onclick="showPage('explore', this)">🏠<br>Explore</div>
-        <div class="nav-tab" onclick="showPage('private', this)">📞<br>1:1 Call</div>
-        <div class="nav-tab" onclick="showPage('profile', this)">👤<br>Profile</div>
-    </footer>
-
-    <div id="live-screen">
-        <div id="video-container"></div>
-        <button class="end-btn" onclick="stopBroadcasting()">End Stream</button>
+    <div id="live-container">
+        <div id="local-video"></div>
+        <div id="gift-alert" style="position: absolute; top: 80px; left: 20px; color: var(--gold); font-weight: bold; font-size: 18px; text-shadow: 2px 2px 4px #000;"></div>
+        
+        <div class="live-controls">
+            <button class="action-btn" onclick="toggleGiftMenu()">🎁</button>
+            <button class="action-btn" style="background: #ff3b30; width: 120px; border-radius: 30px; font-weight: bold;" onclick="stopLiveStream()">END</button>
+            <button class="action-btn">💬</button>
+        </div>
     </div>
+
+    <div id="gift-menu">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+            <h3>Send Gifts</h3>
+            <span onclick="toggleGiftMenu()" style="font-size: 24px; cursor: pointer; color: #888;">✕</span>
+        </div>
+        <div class="gift-grid">
+            <div class="gift-box" onclick="sendGift(10, 'Rose 🌹')"><span style="font-size: 25px;">🌹</span><br><small style="color: var(--gold);">10</small></div>
+            <div class="gift-box" onclick="sendGift(50, 'Heart ❤️')"><span style="font-size: 25px;">❤️</span><br><small style="color: var(--gold);">50</small></div>
+            <div class="gift-box" onclick="sendGift(200, 'Diamond 💎')"><span style="font-size: 25px;">💎</span><br><small style="color: var(--gold);">200</small></div>
+            <div class="gift-box" onclick="sendGift(1000, 'Car 🏎️')"><span style="font-size: 25px;">🏎️</span><br><small style="color: var(--gold);">1k</small></div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="nav-link active" onclick="navPage('explore', this)">🏠<br>Explore</div>
+        <div class="nav-link" onclick="navPage('private', this)">📞<br>1:1 Call</div>
+        <div class="nav-link" onclick="navPage('wallet', this)">👤<br>Profile</div>
+    </footer>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-        // Your Config
+        // Your Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyBwDUe5E8qRY1dbZzUQJu9eCAKBS7YSHVU",
             authDomain: "live-e6771.firebaseapp.com",
@@ -122,54 +147,109 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        let userRef = null;
+        let userCoins = 0;
+        
+        const AGORA_APP_ID = "8c1dec62ad5342199e2552883a4b583f";
         let rtc = { client: null, video: null, audio: null };
-        const APP_ID = "8c1dec62ad5342199e2552883a4b583f";
 
-        // Login automatically
-        signInAnonymously(auth).catch(e => console.error("Login Failed", e));
-
+        // 1. Authentication & Sync Coins
+        signInAnonymously(auth);
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                const snap = await getDoc(doc(db, "users", user.uid));
-                if (snap.exists()) {
-                    document.getElementById('coin-balance').innerText = snap.data().coins || 0;
-                } else {
-                    await setDoc(doc(db, "users", user.uid), { coins: 100, name: "Star" });
+                userRef = doc(db, "users", user.uid);
+                const snap = await getDoc(userRef);
+                if (!snap.exists()) {
+                    await setDoc(userRef, { coins: 50 }); // නව පරිශීලකයෙකුට නොමිලේ කාසි 50ක්
                 }
+                syncCoins();
             }
         });
 
-        // 1. Fixing Navigation (Page Switch)
-        window.showPage = (id, el) => {
-            document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active-section'));
-            document.getElementById(id).classList.add('active-section');
-            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-            el.classList.add('active');
+        async function syncCoins() {
+            const snap = await getDoc(userRef);
+            userCoins = snap.data().coins || 0;
+            document.getElementById('top-coins').innerText = userCoins;
+            document.getElementById('main-balance').innerText = userCoins;
+        }
+
+        // 2. PayPal LIVE Integration
+        paypal.Buttons({
+            createOrder: (data, actions) => {
+                return actions.order.create({ purchase_units: [{ amount: { value: '10.00' } }] });
+            },
+            onApprove: (data, actions) => {
+                return actions.order.capture().then(async details => {
+                    await updateDoc(userRef, { coins: userCoins + 1000 });
+                    alert("Payment Successful! 1000 Coins added to your Wallet.");
+                    syncCoins();
+                });
+            }
+        }).render('#paypal-button-container');
+
+        // 3. OxPay Integration
+        window.payWithOxPay = () => {
+            const merchantId = "GC1KYH-Y8O9BL-NLUCRP-CO0IIV";
+            // සැබෑ ලෝකයේදී OxPay Checkout URL එක මෙතැනින් විවෘත වේ
+            alert("Redirecting to OxPay Secure Gateway (Merchant: " + merchantId + ")");
         };
 
-        // 2. Fixing Camera (Start Live)
-        window.startBroadcasting = async () => {
+        // 4. Live Video Streaming (Agora)
+        window.goLiveNow = async () => {
             try {
+                document.getElementById('live-container').style.display = 'block';
                 rtc.client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-                await rtc.client.join(APP_ID, "test_room", null, null);
+                await rtc.client.join(AGORA_APP_ID, "main_room", null, null);
                 
                 rtc.audio = await AgoraRTC.createMicrophoneAudioTrack();
                 rtc.video = await AgoraRTC.createCameraVideoTrack();
                 
-                document.getElementById('live-screen').style.display = 'block';
-                rtc.video.play("video-container");
-                
+                rtc.video.play("local-video");
                 await rtc.client.publish([rtc.audio, rtc.video]);
             } catch (err) {
-                console.error(err);
-                alert("Camera Error: කරුණාකර Browser එකේ Camera Permission 'Allow' කරන්න.");
+                alert("Camera Access Denied! Please allow camera and microphone permissions in your browser.");
+                document.getElementById('live-container').style.display = 'none';
             }
         };
 
-        window.stopBroadcasting = async () => {
-            rtc.video.stop(); rtc.video.close(); rtc.audio.close();
+        window.stopLiveStream = async () => {
+            if(rtc.video) { rtc.video.stop(); rtc.video.close(); rtc.audio.close(); }
             await rtc.client.leave();
-            document.getElementById('live-screen').style.display = 'none';
+            document.getElementById('live-container').style.display = 'none';
+        };
+
+        // 5. Gifting System
+        window.sendGift = async (cost, giftName) => {
+            if (userCoins >= cost) {
+                // කාසි අඩු කිරීම
+                await updateDoc(userRef, { coins: userCoins - cost });
+                syncCoins();
+                
+                // තිරයේ පණිවිඩය පෙන්වීම
+                const alertBox = document.getElementById('gift-alert');
+                alertBox.innerText = `Sent a ${giftName}!`;
+                setTimeout(() => alertBox.innerText = "", 3000);
+                
+                toggleGiftMenu();
+            } else {
+                alert("Not enough coins! Please recharge your wallet.");
+                toggleGiftMenu();
+                stopLiveStream(); // Live එකෙන් ඉවත් වී
+                navPage('wallet', document.querySelectorAll('.nav-link')[2]); // Wallet එකට යැවීම
+            }
+        };
+
+        // 6. Navigation
+        window.navPage = (id, element) => {
+            document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active-section'));
+            document.getElementById(id).classList.add('active-section');
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            element.classList.add('active');
+        };
+
+        window.toggleGiftMenu = () => {
+            const menu = document.getElementById('gift-menu');
+            menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
         };
 
     </script>
